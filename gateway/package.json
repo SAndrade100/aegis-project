@@ -1,0 +1,33 @@
+{
+  "name": "@api-gateway/core",
+  "version": "1.0.0",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "http-proxy-middleware": "^2.0.6",
+    "ioredis": "^5.3.2",
+    "jsonwebtoken": "^9.0.2",
+    "prom-client": "^15.1.2",
+    "dotenv": "^16.4.5",
+    "winston": "^3.13.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.6",
+    "@types/node": "^20.12.7",
+    "tsx": "^4.7.3",
+    "typescript": "^5.4.5",
+    "vitest": "^1.5.0",
+    "@vitest/coverage-v8": "^1.5.0",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^6.0.2"
+  }
+}

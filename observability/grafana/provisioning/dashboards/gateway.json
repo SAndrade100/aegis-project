@@ -1,0 +1,160 @@
+{
+  "title": "API Gateway",
+  "uid": "api-gateway-main",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "5s",
+  "time": { "from": "now-30m", "to": "now" },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Requests/s",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(rate(api_gateway_http_requests_total[1m]))",
+        "legendFormat": "req/s"
+      }],
+      "options": { "colorMode": "background", "graphMode": "area" },
+      "fieldConfig": {
+        "defaults": { "unit": "reqps", "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 100},
+            {"color": "red", "value": 500}
+          ]}
+        }
+      }
+    },
+    {
+      "id": 2,
+      "title": "Error rate (5xx)",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "sum(rate(api_gateway_http_requests_total{status_code=~\"5..\"}[1m])) / sum(rate(api_gateway_http_requests_total[1m])) * 100",
+        "legendFormat": "% errors"
+      }],
+      "options": { "colorMode": "background" },
+      "fieldConfig": {
+        "defaults": { "unit": "percent", "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 1},
+            {"color": "red", "value": 5}
+          ]}
+        }
+      }
+    },
+    {
+      "id": 3,
+      "title": "Latência p95 (ms)",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "histogram_quantile(0.95, sum(rate(api_gateway_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+        "legendFormat": "p95"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "ms", "color": { "mode": "thresholds" },
+          "thresholds": { "steps": [
+            {"color": "green", "value": null},
+            {"color": "yellow", "value": 200},
+            {"color": "red", "value": 1000}
+          ]}
+        }
+      }
+    },
+    {
+      "id": 4,
+      "title": "In-flight requests",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "targets": [{
+        "expr": "api_gateway_http_requests_in_flight",
+        "legendFormat": "in-flight"
+      }],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 5,
+      "title": "Requests por status",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 4, "w": 12, "h": 8 },
+      "targets": [{
+        "expr": "sum by (status_code) (rate(api_gateway_http_requests_total[1m]))",
+        "legendFormat": "{{status_code}}"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 6,
+      "title": "Latência por percentil",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 4, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum(rate(api_gateway_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "p50"
+        },
+        {
+          "expr": "histogram_quantile(0.95, sum(rate(api_gateway_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "p95"
+        },
+        {
+          "expr": "histogram_quantile(0.99, sum(rate(api_gateway_http_request_duration_seconds_bucket[5m])) by (le)) * 1000",
+          "legendFormat": "p99"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "ms" } }
+    },
+    {
+      "id": 7,
+      "title": "Rate limit hits/s",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 12, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "sum(rate(api_gateway_rate_limit_hits_total[1m]))",
+        "legendFormat": "bloqueados/s"
+      }],
+      "fieldConfig": { "defaults": { "unit": "reqps" } }
+    },
+    {
+      "id": 8,
+      "title": "Circuit Breaker states",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 12, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "api_gateway_circuit_breaker_state",
+        "legendFormat": "{{upstream_service}}"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "short", "mappings": [
+          {"options": {"0": {"text": "CLOSED"}, "1": {"text": "OPEN"}, "2": {"text": "HALF_OPEN"}}, "type": "value"}
+        ]}
+      }
+    },
+    {
+      "id": 9,
+      "title": "Node.js heap usado",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "api_gateway_nodejs_heap_size_used_bytes",
+        "legendFormat": "heap usado"
+      }],
+      "fieldConfig": { "defaults": { "unit": "bytes" } }
+    },
+    {
+      "id": 10,
+      "title": "Event loop lag",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 6 },
+      "targets": [{
+        "expr": "api_gateway_nodejs_eventloop_lag_seconds",
+        "legendFormat": "event loop lag"
+      }],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    }
+  ]
+}

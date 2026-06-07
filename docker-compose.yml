@@ -1,0 +1,115 @@
+version: "3.9"
+
+services:
+  # ─── Redis ────────────────────────────────────────────────────────────────
+  # Usado para: Token Bucket (rate limiting), circuit breaker state,
+  # service registry cache e respostas em cache para fallback
+  redis:
+    image: redis:7-alpine
+    container_name: gateway-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: >
+      redis-server
+      --save 60 1
+      --loglevel warning
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ─── Consul ───────────────────────────────────────────────────────────────
+  # Service discovery: microsserviços se registram aqui,
+  # o gateway consulta para descobrir instâncias saudáveis
+  consul:
+    image: consul:1.17
+    container_name: gateway-consul
+    restart: unless-stopped
+    ports:
+      - "8500:8500"   # UI web + API HTTP
+      - "8600:8600/udp" # DNS
+    command: agent -dev -client=0.0.0.0 -ui
+    environment:
+      CONSUL_BIND_INTERFACE: eth0
+    healthcheck:
+      test: ["CMD", "consul", "members"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Prometheus ───────────────────────────────────────────────────────────
+  # Raspa o endpoint /metrics do gateway e armazena time-series
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: gateway-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--storage.tsdb.retention.time=15d"
+      - "--web.enable-lifecycle"  # permite recarregar config via POST /-/reload
+      - "--web.console.libraries=/usr/share/prometheus/console_libraries"
+      - "--web.console.templates=/usr/share/prometheus/consoles"
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:9090/-/healthy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - redis
+
+  # ─── Grafana ──────────────────────────────────────────────────────────────
+  # Visualização das métricas com dashboards pré-configurados
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: gateway-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    healthcheck:
+      test: ["CMD-SHELL", "wget --spider -q http://localhost:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - prometheus
+
+  # ─── Redis Insight (opcional, comentar se não quiser) ─────────────────────
+  # UI web para inspecionar o Redis — útil para debugar rate limiting
+  redis-insight:
+    image: redis/redisinsight:2.48
+    container_name: gateway-redis-insight
+    restart: unless-stopped
+    ports:
+      - "5540:5540"
+    depends_on:
+      - redis
+
+volumes:
+  redis_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  default:
+    name: api-gateway-network

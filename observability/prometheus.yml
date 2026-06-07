@@ -1,0 +1,41 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 5s
+  scrape_timeout: 4s
+
+# Regras de alerta (Fase 5)
+# rule_files:
+#   - "alerts/*.yml"
+
+scrape_configs:
+  # ─── API Gateway ──────────────────────────────────────────────────────────
+  - job_name: "api-gateway"
+    static_configs:
+      # host.docker.internal resolve para o host no Docker Desktop (Mac/Windows)
+      # Em Linux, use o IP da interface docker0: 172.17.0.1
+      - targets: ["host.docker.internal:3000"]
+        labels:
+          instance: "gateway-1"
+          env: "development"
+    metrics_path: "/metrics"
+    scheme: "http"
+
+  # Quando tiver múltiplas instâncias do gateway (Fase de scaling):
+  # - job_name: "api-gateway-cluster"
+  #   static_configs:
+  #     - targets:
+  #         - "host.docker.internal:3000"
+  #         - "host.docker.internal:3002"
+  #         - "host.docker.internal:3003"
+
+  # ─── Redis (via redis_exporter) ───────────────────────────────────────────
+  # Descomente quando adicionar o redis_exporter ao docker-compose
+  # - job_name: "redis"
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]
+
+  # ─── Microsserviços mock ─────────────────────────────────────────────────
+  # - job_name: "service-a"
+  #   static_configs:
+  #     - targets: ["host.docker.internal:4001"]
+  #   metrics_path: "/metrics"
